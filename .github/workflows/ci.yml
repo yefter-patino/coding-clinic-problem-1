@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Validate module
+        working-directory: modules/vpc
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate example
+        working-directory: examples/basic
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Unit tests (mocked AWS, no credentials needed)
+        working-directory: modules/vpc
+        run: terraform test
+
+      - name: TFLint
+        run: |
+          tflint --init
+          tflint --recursive
